@@ -1,10 +1,12 @@
-"""CLI entry point for stackdiff."""
+"""Command-line interface for stackdiff."""
+from __future__ import annotations
+
 import argparse
 import sys
 
 from stackdiff.config_loader import load_config
 from stackdiff.diff_engine import diff_configs
-from stackdiff.formatter import format_output
+from stackdiff.reporter import generate_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -12,59 +14,57 @@ def build_parser() -> argparse.ArgumentParser:
         prog="stackdiff",
         description="Compare environment configs across deployments.",
     )
-    parser.add_argument("left", help="Path to the left/staging config file.")
-    parser.add_argument("right", help="Path to the right/production config file.")
+    parser.add_argument("file_a", help="Path to the first config file (e.g. staging).")
+    parser.add_argument("file_b", help="Path to the second config file (e.g. production).")
     parser.add_argument(
-        "--left-label",
-        default=None,
-        help="Display label for the left config (default: filename).",
+        "--label-a", default="staging", help="Label for file_a (default: staging)."
     )
     parser.add_argument(
-        "--right-label",
-        default=None,
-        help="Display label for the right config (default: filename).",
+        "--label-b", default="production", help="Label for file_b (default: production)."
     )
     parser.add_argument(
         "--format",
+        dest="fmt",
         choices=["text", "json"],
         default="text",
         help="Output format (default: text).",
     )
     parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable ANSI color output.",
+        "--output",
+        dest="output_path",
+        default=None,
+        help="Write report to this file instead of stdout.",
     )
     parser.add_argument(
         "--exit-code",
         action="store_true",
-        help="Exit with code 1 if differences are found.",
+        default=False,
+        help="Exit with code 1 when differences are found.",
     )
     return parser
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    try:
-        left_cfg = load_config(args.left)
-        right_cfg = load_config(args.right)
-    except (FileNotFoundError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        return 2
+    config_a = load_config(args.file_a)
+    config_b = load_config(args.file_b)
 
-    left_label = args.left_label or args.left
-    right_label = args.right_label or args.right
+    result = diff_configs(config_a, config_b)
 
-    result = diff_configs(left_cfg, right_cfg, left_label=left_label, right_label=right_label)
-    output = format_output(result, fmt=args.format, color=not args.no_color)
-    print(output)
+    generate_report(
+        result,
+        fmt=args.fmt,
+        label_a=args.label_a,
+        label_b=args.label_b,
+        output_path=args.output_path,
+    )
 
-    if args.exit_code and result.has_diff():
+    if args.exit_code and (result.added or result.removed or result.changed):
         return 1
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())
