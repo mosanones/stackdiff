@@ -1,40 +1,46 @@
-"""High-level pipeline that wires loader → filter → mask → sort → diff."""
-from typing import Optional, List
+"""Orchestrate the full stackdiff pipeline: load, filter, mask, diff, sort, validate."""
+
+from pathlib import Path
+from typing import Any
+
 from stackdiff.config_loader import load_config
 from stackdiff.filter import apply_filters
-from stackdiff.masker import mask_config
-from stackdiff.sorter import sort_flat_config, sort_diff_result, SORT_KEY
+from stackdiff.masker import mask_config, mask_diff_values
 from stackdiff.diff_engine import diff_configs, DiffResult
+from stackdiff.sorter import sort_diff_result
+from stackdiff.validator import validate, ValidationResult
 
 
 def run_pipeline(
-    path_a: str,
-    path_b: str,
-    label_a: str = "A",
-    label_b: str = "B",
-    include: Optional[List[str]] = None,
-    exclude: Optional[List[str]] = None,
+    base_path: str | Path,
+    compare_path: str | Path,
+    include_globs: list[str] | None = None,
+    exclude_globs: list[str] | None = None,
     mask: bool = True,
-    sort_keys: bool = True,
-    sort_mode: str = SORT_KEY,
-    sort_reverse: bool = False,
-) -> DiffResult:
-    """Load two configs and return a sorted, filtered, masked DiffResult."""
-    cfg_a = load_config(path_a)
-    cfg_b = load_config(path_b)
+    sensitive_patterns: list[str] | None = None,
+    sort: str = "asc",
+    required_keys: list[str] | None = None,
+) -> tuple[DiffResult, ValidationResult]:
+    """Load two configs, apply filters/masking, diff, sort, and validate."""
+    base: dict[str, Any] = load_config(base_path)
+    compare: dict[str, Any] = load_config(compare_path)
 
-    cfg_a = apply_filters(cfg_a, include=include, exclude=exclude)
-    cfg_b = apply_filters(cfg_b, include=include, exclude=exclude)
+    base = apply_filters(base, include_globs=include_globs, exclude_globs=exclude_globs)
+    compare = apply_filters(
+        compare, include_globs=include_globs, exclude_globs=exclude_globs
+    )
+
+    validation = validate(base, compare, required_keys=required_keys)
 
     if mask:
-        cfg_a = mask_config(cfg_a)
-        cfg_b = mask_config(cfg_b)
+        base = mask_config(base, sensitive_patterns)
+        compare = mask_config(compare, sensitive_patterns)
 
-    if sort_keys:
-        cfg_a = sort_flat_config(cfg_a)
-        cfg_b = sort_flat_config(cfg_b)
+    result: DiffResult = diff_configs(base, compare)
 
-    result = diff_configs(cfg_a, cfg_b, label_a=label_a, label_b=label_b)
+    if mask:
+        result = mask_diff_values(result, sensitive_patterns)
 
-    result = sort_diff_result(result, mode=sort_mode, reverse=sort_reverse)
-    return result
+    result = sort_diff_result(result, order=sort)
+
+    return result, validation
