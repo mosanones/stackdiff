@@ -33,7 +33,10 @@ def load_baseline(
     path = _baseline_path(name, base_dir)
     if not path.exists():
         raise FileNotFoundError(f"Baseline '{name}' not found at {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Baseline '{name}' contains invalid JSON: {exc}") from exc
 
 
 def list_baselines(base_dir: Path = DEFAULT_BASELINE_DIR) -> list[str]:
