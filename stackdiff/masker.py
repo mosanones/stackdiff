@@ -15,6 +15,17 @@ DEFAULT_PATTERNS = [
 MASK_VALUE = "***"
 
 
+def _build_active_patterns(
+    patterns: List[str] | None,
+    extra_patterns: List[str] | None,
+) -> List[str]:
+    """Resolve the final list of patterns to use for masking."""
+    active = list(patterns if patterns is not None else DEFAULT_PATTERNS)
+    if extra_patterns:
+        active.extend(extra_patterns)
+    return active
+
+
 def _is_sensitive(key: str, patterns: List[str]) -> bool:
     """Return True if key matches any sensitive pattern (case-insensitive)."""
     lower = key.lower()
@@ -33,9 +44,7 @@ def mask_config(
         patterns: Override default patterns entirely when provided.
         extra_patterns: Additional patterns appended to the defaults.
     """
-    active = list(patterns if patterns is not None else DEFAULT_PATTERNS)
-    if extra_patterns:
-        active.extend(extra_patterns)
+    active = _build_active_patterns(patterns, extra_patterns)
 
     return {
         k: (MASK_VALUE if _is_sensitive(k, active) else v)
@@ -54,9 +63,7 @@ def mask_diff_values(
 
     Returns (masked_added, masked_removed, masked_changed).
     """
-    active = list(patterns if patterns is not None else DEFAULT_PATTERNS)
-    if extra_patterns:
-        active.extend(extra_patterns)
+    active = _build_active_patterns(patterns, extra_patterns)
 
     m_added = {k: (MASK_VALUE if _is_sensitive(k, active) else v) for k, v in added.items()}
     m_removed = {k: (MASK_VALUE if _is_sensitive(k, active) else v) for k, v in removed.items()}
