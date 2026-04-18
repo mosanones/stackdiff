@@ -70,6 +70,13 @@ def test_alert_on_label_match(breaking_score, empty_summary):
     assert alerts[0].severity == "warning"
 
 
+def test_no_alert_on_label_mismatch(high_score, empty_summary):
+    """Rule requiring 'breaking' label should not fire for 'high-risk' label."""
+    rule = AlertRule(name="breaking_label", require_label="breaking")
+    alerts = evaluate_rules(high_score, empty_summary, rules=[rule])
+    assert alerts == []
+
+
 def test_format_alerts_no_alerts():
     assert format_alerts([]) == "No alerts triggered."
 
@@ -79,6 +86,19 @@ def test_format_alerts_shows_entries():
     out = format_alerts([a])
     assert "[CRITICAL]" in out
     assert "msg" in out
+
+
+def test_format_alerts_multiple_entries():
+    """All alerts should appear in formatted output."""
+    alerts = [
+        Alert(rule_name="r1", message="first", severity="warning"),
+        Alert(rule_name="r2", message="second", severity="critical"),
+    ]
+    out = format_alerts(alerts)
+    assert "first" in out
+    assert "second" in out
+    assert "[WARNING]" in out
+    assert "[CRITICAL]" in out
 
 
 def test_alert_as_dict():
