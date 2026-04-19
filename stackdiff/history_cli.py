@@ -33,10 +33,15 @@ def build_history_parser(parent: argparse._SubParsersAction | None = None) -> ar
     return p
 
 
+def _resolve_history_dir(args: argparse.Namespace) -> Path | None:
+    """Return a Path for the history directory if specified, else None."""
+    return Path(args.history_dir) if args.history_dir else None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_history_parser()
     args = parser.parse_args(argv)
-    hdir = Path(args.history_dir) if args.history_dir else None
+    hdir = _resolve_history_dir(args)
 
     if args.history_cmd == "list":
         names = list_histories(hdir)
