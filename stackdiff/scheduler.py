@@ -52,3 +52,22 @@ def stop_scheduler(state: ScheduleState) -> None:
     state.running = False
     if state._thread:
         state._thread.join(timeout=5)
+
+
+def scheduler_status(state: ScheduleState) -> dict:
+    """Return a summary of the scheduler's current state.
+
+    Returns a plain dict suitable for logging or display, including
+    whether the scheduler is active, run/error counts, and the time
+    elapsed since the last run.
+    """
+    elapsed = None
+    if state.last_run is not None:
+        elapsed = round(time.time() - state.last_run, 2)
+    return {
+        "running": state.running,
+        "runs": state.runs,
+        "errors": state.errors,
+        "last_run": state.last_run,
+        "seconds_since_last_run": elapsed,
+    }
