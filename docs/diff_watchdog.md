@@ -49,6 +49,16 @@ class WatchdogConfig:
     cooldown_seconds: float = 60.0
 ```
 
+### `WatchdogState`
+
+```python
+@dataclass
+class WatchdogState:
+    breach_times: list[float]  # timestamps of breaches within the current window
+    trigger_count: int         # total number of times the watchdog has fired
+    last_trigger_time: float | None  # timestamp of the most recent trigger, or None
+```
+
 ### `create_watchdog(callback, config=None)`
 
 Factory function. Returns `(WatchdogState, observe_fn)` where `observe_fn`
