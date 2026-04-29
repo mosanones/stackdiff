@@ -39,9 +39,21 @@ def test_sort_flat_config_does_not_mutate(unsorted_cfg):
     assert list(unsorted_cfg.keys()) == original_keys
 
 
+def test_sort_flat_config_empty():
+    """Sorting an empty config should return an empty dict without error."""
+    result = sort_flat_config({})
+    assert result == {}
+
+
 def test_sort_diff_by_key(mixed_diff):
     result = sort_diff_result(mixed_diff, mode=SORT_KEY)
     assert list(result.diffs.keys()) == ["alpha", "beta", "gamma", "zoo"]
+
+
+def test_sort_diff_by_key_reverse(mixed_diff):
+    """Sorting by key in reverse order should yield descending alphabetical keys."""
+    result = sort_diff_result(mixed_diff, mode=SORT_KEY, reverse=True)
+    assert list(result.diffs.keys()) == ["zoo", "gamma", "beta", "alpha"]
 
 
 def test_sort_diff_by_status(mixed_diff):
