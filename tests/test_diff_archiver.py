@@ -83,3 +83,12 @@ def test_as_dict_structure(arc_dir, sample_report):
     assert set(d.keys()) == {"archive_id", "label", "timestamp", "report"}
     assert d["label"] == "check"
     assert d["report"] == sample_report
+
+
+def test_save_multiple_same_label(arc_dir, sample_report):
+    """Saving multiple archives with the same label should produce distinct IDs."""
+    e1 = save_archive(sample_report, label="dup", archive_dir=arc_dir)
+    e2 = save_archive(sample_report, label="dup", archive_dir=arc_dir)
+    assert e1.archive_id != e2.archive_id
+    ids = list_archives(archive_dir=arc_dir, label="dup")
+    assert len(ids) == 2
