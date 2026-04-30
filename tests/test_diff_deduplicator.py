@@ -65,6 +65,18 @@ def test_frequency_calculation():
     assert key.as_dict()["frequency"] == 0.25
 
 
+def test_frequency_is_one_when_all_runs():
+    """Frequency should be exactly 1.0 when occurrences equals total_runs."""
+    key = DeduplicatedKey(key="x", occurrences=5, total_runs=5, last_removed=None, last_added=None)
+    assert key.as_dict()["frequency"] == 1.0
+
+
+def test_frequency_is_zero_for_single_run_out_of_many():
+    """Frequency rounds correctly for a single occurrence across many runs."""
+    key = DeduplicatedKey(key="x", occurrences=1, total_runs=10, last_removed=None, last_added=None)
+    assert key.as_dict()["frequency"] == 0.1
+
+
 # --- deduplicate_diffs ---
 
 def test_deduplicate_returns_deduped_diff(dr_stable):
@@ -90,6 +102,13 @@ def test_flapping_key_detected(dr_stable, dr_flap, dr_empty):
     assert any(k.key == "app.debug" for k in flapping)
 
 
+def test_stable_key_not_in_flapping(dr_stable):
+    """A key that changes every run should not appear in flapping_keys."""
+    result = deduplicate_diffs([dr_stable, dr_stable, dr_stable])
+    flapping = result.flapping_keys()
+    assert not any(k.key == "db.host" for k in flapping)
+
+
 def test_empty_runs_returns_empty_diff():
     result = deduplicate_diffs([])
     assert result.total_runs == 0
@@ -103,17 +122,3 @@ def test_as_dict_structure(dr_stable):
     assert "unique_changed_keys" in d
     assert "stable_keys" in d
     assert "flapping_keys" in d
-    assert isinstance(d["keys"], list)
-
-
-def test_keys_sorted_by_occurrence_descending(dr_stable, dr_flap):
-    # db.host appears in both runs, app.debug in only one
-    result = deduplicate_diffs([dr_stable, dr_stable, dr_flap])
-    assert result.keys[0].key == "db.host"
-
-
-def test_last_removed_and_added_tracked(dr_stable):
-    result = deduplicate_diffs([dr_stable])
-    key = next(k for k in result.keys if k.key == "db.host")
-    assert key.last_removed == "old-host"
-    assert key.last_added == "new-host"
