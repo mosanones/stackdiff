@@ -71,3 +71,19 @@ def scheduler_status(state: ScheduleState) -> dict:
         "last_run": state.last_run,
         "seconds_since_last_run": elapsed,
     }
+
+
+def wait_for_run(state: ScheduleState, timeout: float = 10.0, poll_interval: float = 0.1) -> bool:
+    """Block until at least one run has completed or the timeout expires.
+
+    Useful in tests or CLI tools that need to wait for the scheduler to
+    perform its first job execution before proceeding.
+
+    Returns True if a run was observed within the timeout, False otherwise.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if state.runs > 0:
+            return True
+        time.sleep(poll_interval)
+    return False
